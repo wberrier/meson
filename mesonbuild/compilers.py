@@ -231,16 +231,16 @@ gnulike_instruction_set_args = {'mmx': ['-mmmx'],
                                 }
 
 vs32_instruction_set_args = {'mmx': ['/arch:SSE'], # There does not seem to be a flag just for MMX
-                           'sse': ['/arch:SSE'],
-                           'sse2': ['/arch:SSE2'],
-                           'sse3': ['/arch:AVX'], # VS leaped from SSE2 directly to AVX.
-                           'ssse3': ['/arch:AVX'],
-                           'sse41': ['/arch:AVX'],
-                           'sse42': ['/arch:AVX'],
-                           'avx': ['/arch:AVX'],
-                           'avx2': ['/arch:AVX2'],
-                           'neon': None,
-}
+                             'sse': ['/arch:SSE'],
+                             'sse2': ['/arch:SSE2'],
+                             'sse3': ['/arch:AVX'], # VS leaped from SSE2 directly to AVX.
+                             'ssse3': ['/arch:AVX'],
+                             'sse41': ['/arch:AVX'],
+                             'sse42': ['/arch:AVX'],
+                             'avx': ['/arch:AVX'],
+                             'avx2': ['/arch:AVX2'],
+                             'neon': None,
+                             }
 
 # The 64 bit compiler defaults to /arch:avx.
 vs64_instruction_set_args = {'mmx': ['/arch:AVX'],
@@ -253,7 +253,7 @@ vs64_instruction_set_args = {'mmx': ['/arch:AVX'],
                              'avx': ['/arch:AVX'],
                              'avx2': ['/arch:AVX2'],
                              'neon': None,
-}
+                             }
 
 def sanitizer_compile_args(value):
     if value == 'none':
@@ -2057,7 +2057,7 @@ class VisualStudioCCompiler(CCompiler):
     std_warn_args = ['/W3']
     std_opt_args = ['/O2']
 
-    def __init__(self, exelist, version, is_cross, exe_wrap,is_64):
+    def __init__(self, exelist, version, is_cross, exe_wrap, is_64):
         CCompiler.__init__(self, exelist, version, is_cross, exe_wrap)
         self.id = 'msvc'
         # /showIncludes is needed for build dependency tracking in Ninja
@@ -2067,7 +2067,7 @@ class VisualStudioCCompiler(CCompiler):
                           '2': ['/W3'],
                           '3': ['/W4']}
         self.base_options = ['b_pch'] # FIXME add lto, pgo and the like
-        self.is_64 = True
+        self.is_64 = is_64
 
     def get_always_args(self):
         return self.always_args
@@ -2250,6 +2250,12 @@ class VisualStudioCCompiler(CCompiler):
     def get_instruction_set_args(self, instruction_set):
         if self.is_64:
             return vs64_instruction_set_args.get(instruction_set, None)
+        print(self.version)
+        if self.version.split('.')[0] == '16' and instruction_set == 'avx':
+            # VS documentation says that this exists and should work, but
+            # it does not. The headers do not contain AVX intrinsics
+            # and the can not be called.
+            return None
         return vs32_instruction_set_args.get(instruction_set, None)
 
 class VisualStudioCPPCompiler(VisualStudioCCompiler, CPPCompiler):
