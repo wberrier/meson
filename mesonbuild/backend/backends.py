@@ -303,7 +303,7 @@ class Backend:
         # With unity builds, there's just one object that contains all the
         # sources, and we only support extracting all the objects in this mode,
         # so just return that.
-        if self.get_option_for_target('unity', target):
+        if self.is_unity(target):
             comp = get_compiler_for_source(extobj.target.compilers.values(),
                                            extobj.srclist[0])
             # There is a potential conflict here, but it is unlikely that
