@@ -1091,6 +1091,7 @@ int dummy;
         args += rustc.get_buildtype_args(self.environment.coredata.get_builtin_option('buildtype'))
         depfile = os.path.join(target.subdir, target.name + '.d')
         args += ['--emit', 'dep-info={}'.format(depfile), '--emit', 'link']
+        args += target.get_extra_args('rust')
         args += ['-o', os.path.join(target.subdir, target.get_filename())]
         orderdeps = [os.path.join(t.subdir, t.get_filename()) for t in target.link_targets]
         linkdirs = OrderedDict()
