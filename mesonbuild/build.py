@@ -1015,7 +1015,7 @@ class StaticLibrary(BuildTarget):
             self.prefix = 'lib'
         if not hasattr(self, 'suffix'):
             # Rust static library crates have .rlib suffix
-            if 'rust' in self.compilers:
+            if 'rust' in self.compilers and 'staticlib' not in self.get_extra_args('rust'):
                 self.suffix = 'rlib'
             else:
                 self.suffix = 'a'
@@ -1081,8 +1081,7 @@ class SharedLibrary(BuildTarget):
             suffix = 'dll'
             self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'
         # Rust
-        elif 'rust' in self.compilers:
-            # Currently, we always build --crate-type=rlib
+        elif 'rust' in self.compilers and 'cdylib' not in self.get_extra_args('rust'):
             prefix = 'lib'
             suffix = 'rlib'
             self.filename_tpl = '{0.prefix}{0.name}.{0.suffix}'

@@ -1070,6 +1070,34 @@ int dummy;
         element.write(outfile)
         return other_src[0], other_src[1], vala_c_src
 
+    @staticmethod
+    def _get_rust_crate_type(target):
+        extra_args = target.get_extra_args('rust')
+        if '--crate-type' in extra_args:
+            try:
+                cratetype = extra_args[extra_args.index('--crate-type') + 1]
+            except IndexError:
+                raise MesonException('--crate-type found but no following type.')
+
+            # Sanity check the set value
+            if isinstance(target, build.Executable) and cratetype != 'bin':
+                raise InvalidArguments('Non "bin" crate type used on an executable.')
+            elif cratetype == 'staticlib' and not isinstance(target, build.StaticLibrary):
+                raise InvalidArguments('Crate type "staticlib" used on non-staticlib.')
+            elif cratetype.endswith('dylib') and not isinstance(target, build.SharedLibrary):
+                raise InvalidArguments('Crate type "{}" used on non-sharedlib.'.format(cratetype))
+        else:
+            if isinstance(target, build.Executable):
+                cratetype = 'bin'
+            elif isinstance(target, build.SharedLibrary):
+                cratetype = 'rlib'
+            elif isinstance(target, build.StaticLibrary):
+                cratetype = 'rlib'
+            else:
+                raise InvalidArguments('Unknown target type for rustc.')
+
+        return cratetype
+
     def generate_rust_target(self, target, outfile):
         rustc = target.compilers['rust']
         relsrc = []
@@ -1078,20 +1106,20 @@ int dummy;
                 raise InvalidArguments('Rust target %s contains a non-rust source file.' % target.get_basename())
             relsrc.append(i.rel_to_builddir(self.build_to_src))
         target_name = os.path.join(target.subdir, target.get_filename())
-        args = ['--crate-type']
-        if isinstance(target, build.Executable):
-            cratetype = 'bin'
-        elif isinstance(target, build.SharedLibrary):
-            cratetype = 'rlib'
-        elif isinstance(target, build.StaticLibrary):
-            cratetype = 'rlib'
-        else:
-            raise InvalidArguments('Unknown target type for rustc.')
-        args.append(cratetype)
+        args = []
+        extra_args = target.get_extra_args('rust')
+        cratetype = self._get_rust_crate_type(target)
+
+        if '--crate-type' not in extra_args:
+            args += ['--crate-type', cratetype]
+
+        if cratetype == 'cdylib':
+            self.generate_shsym(outfile, target)
+
         args += rustc.get_buildtype_args(self.environment.coredata.get_builtin_option('buildtype'))
         depfile = os.path.join(target.subdir, target.name + '.d')
         args += ['--emit', 'dep-info={}'.format(depfile), '--emit', 'link']
-        args += target.get_extra_args('rust')
+        args += extra_args
         args += ['-o', os.path.join(target.subdir, target.get_filename())]
         orderdeps = [os.path.join(t.subdir, t.get_filename()) for t in target.link_targets]
         linkdirs = OrderedDict()
@@ -1106,7 +1134,6 @@ int dummy;
             element.add_orderdep(orderdeps)
         element.add_item('ARGS', args)
         element.add_item('targetdep', depfile)
-        element.add_item('cratetype', cratetype)
         element.write(outfile)
 
     def swift_module_file_name(self, target):
